@@ -1,8 +1,8 @@
-import type { SourceMap } from 'rollup';
-import { Plugin, TransformResult, createLogger } from 'vite';
-import { createInstrumenter } from 'istanbul-lib-instrument';
-import TestExclude from 'test-exclude';
-import { yellow } from 'chalk';
+import type { SourceMap } from "rollup";
+import { Plugin, TransformResult, createLogger } from "vite";
+import { createInstrumenter } from "istanbul-lib-instrument";
+import TestExclude from "test-exclude";
+import { yellow } from "chalk";
 
 // Required for typing to work in configureServer()
 declare global {
@@ -10,9 +10,9 @@ declare global {
 }
 
 interface IstanbulPluginOptions {
-  include?: string|string[];
-  exclude?: string|string[];
-  extension?: string|string[];
+  include?: string | string[];
+  exclude?: string | string[];
+  extension?: string | string[];
   requireEnv?: boolean;
   cypress?: boolean;
   checkProd?: boolean;
@@ -21,11 +21,19 @@ interface IstanbulPluginOptions {
 }
 
 // Custom extensions to include .vue files
-const DEFAULT_EXTENSION = ['.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx', '.vue'];
-const COVERAGE_PUBLIC_PATH = '/__coverage__';
-const PLUGIN_NAME = 'vite:istanbul';
-const MODULE_PREFIX = '/@modules/';
-const NULL_STRING = '\0';
+const DEFAULT_EXTENSION = [
+  ".js",
+  ".cjs",
+  ".mjs",
+  ".ts",
+  ".tsx",
+  ".jsx",
+  ".vue",
+];
+const COVERAGE_PUBLIC_PATH = "/__coverage__";
+const PLUGIN_NAME = "vite:istanbul";
+const MODULE_PREFIX = "/@modules/";
+const NULL_STRING = "\0";
 
 function sanitizeSourceMap(sourceMap: SourceMap): SourceMap {
   // JSON parse/stringify trick required for istanbul to accept the SourceMap
@@ -37,8 +45,8 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
   // By default the plugin is always on
   const requireEnv = opts?.requireEnv ?? false;
   const checkProd = opts?.checkProd ?? true;
-  const forceBuildInstrument = opts?.forceBuildInstrument ?? false
-  const logger = createLogger('warn', { prefix: 'vite-plugin-istanbul' });
+  const forceBuildInstrument = opts?.forceBuildInstrument ?? false;
+  const logger = createLogger("warn", { prefix: "vite-plugin-istanbul" });
   const exclude = new TestExclude({
     cwd: opts.cwd ?? process.cwd(),
     include: opts.include,
@@ -59,16 +67,18 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
 
   return {
     name: PLUGIN_NAME,
-    apply: forceBuildInstrument ? 'build' : 'serve',
+    apply: forceBuildInstrument ? "build" : "serve",
     // istanbul only knows how to instrument JavaScript,
     // this allows us to wait until the whole code is JavaScript to
     // instrument and sourcemap
-    enforce: 'post',
+    enforce: "post",
     config(config) {
       // If sourcemap is not set (either undefined or false)
       if (!config.build?.sourcemap) {
-        logger.warn(`${PLUGIN_NAME}> ${yellow(`Sourcemaps was automatically enabled for code coverage to be accurate.
- To hide this message set build.sourcemap to true, 'inline' or 'hidden'.`)}`);
+        logger.warn(
+          `${PLUGIN_NAME}> ${yellow(`Sourcemaps was automatically enabled for code coverage to be accurate.
+ To hide this message set build.sourcemap to true, 'inline' or 'hidden'.`)}`
+        );
 
         // Enforce sourcemapping,
         config.build = config.build || {};
@@ -80,11 +90,15 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
       // As config can be modified by other plugins and from .env variables
       const { isProduction } = config;
       const { CYPRESS_COVERAGE, VITE_COVERAGE } = config.env;
-      const env = (opts.cypress ? CYPRESS_COVERAGE : VITE_COVERAGE)?.toLowerCase();
+      const env = (
+        opts.cypress ? CYPRESS_COVERAGE : VITE_COVERAGE
+      )?.toLowerCase();
 
-      if ((checkProd && isProduction && !forceBuildInstrument) ||
-        (!requireEnv && env === 'false') ||
-        (requireEnv && env !== 'true')) {
+      if (
+        (checkProd && isProduction && !forceBuildInstrument) ||
+        (!requireEnv && env === "false") ||
+        (requireEnv && env !== "true")
+      ) {
         enabled = false;
       }
     },
@@ -100,7 +114,7 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
           return next();
         }
 
-        const coverage = (global.__coverage__) ?? null;
+        const coverage = global.__coverage__ ?? null;
         let data: string;
 
         try {
@@ -109,13 +123,17 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
           return next(ex);
         }
 
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader("Content-Type", "application/json");
         res.statusCode = 200;
         res.end(data);
       });
     },
     transform(srcCode, id) {
-      if (!enabled || id.startsWith(MODULE_PREFIX) || id.startsWith(NULL_STRING)) {
+      if (
+        !enabled ||
+        id.startsWith(MODULE_PREFIX) ||
+        id.startsWith(NULL_STRING)
+      ) {
         // do not transform if this is a dep
         // do not transform if plugin is not enabled
         return;
@@ -123,7 +141,11 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
 
       if (exclude.shouldInstrument(id)) {
         const sourceMap = sanitizeSourceMap(this.getCombinedSourcemap());
-        const code = instrumenter.instrumentSync(srcCode, id, sourceMap);
+        const code = instrumenter.instrumentSync(
+          srcCode,
+          id.replace(/\?.+$/, ""),
+          sourceMap
+        );
         const map = instrumenter.lastSourceMap();
 
         // Required to cast to correct mapping value
@@ -131,4 +153,4 @@ export = function istanbulPlugin(opts: IstanbulPluginOptions = {}): Plugin {
       }
     },
   };
-}
+};
